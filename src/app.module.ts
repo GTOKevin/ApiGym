@@ -6,6 +6,12 @@ import { AuthModule } from './modules/auth/auth.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { AssignmentsModule } from './modules/assignments/assignments.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { ExercisesModule } from './modules/exercises/exercises.module';
+import { RoutinesModule } from './modules/routines/routines.module';
+import { MeasurementsModule } from './modules/measurements/measurements.module';
+import { DietsModule } from './modules/diets/diets.module';
+import { SyncModule } from './modules/sync/sync.module';
+import { ReportsModule } from './modules/reports/reports.module';
 
 @Module({
   imports: [
@@ -21,6 +27,12 @@ import { PaymentsModule } from './modules/payments/payments.module';
     SubscriptionsModule,
     AssignmentsModule,
     PaymentsModule,
+    ExercisesModule,
+    RoutinesModule,
+    MeasurementsModule,
+    DietsModule,
+    SyncModule,
+    ReportsModule,
   ],
   controllers: [],
   providers: [],
