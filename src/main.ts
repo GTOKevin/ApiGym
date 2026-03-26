@@ -13,7 +13,15 @@ async function bootstrap() {
 
   // Security
   app.use(helmet());
-  app.enableCors();
+
+  const corsOrigins = configService.get<string>('CORS_ORIGINS');
+  const origin = corsOrigins ? corsOrigins.split(',').map(o => o.trim()) : '*';
+
+  app.enableCors({
+    origin,
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+    credentials: origin !== '*', // Solo permitir credentials si hay orígenes explícitos
+  });
 
   // Global Exception Filter (Clean Architecture Rule 5)
   app.useGlobalFilters(new GlobalExceptionFilter());
