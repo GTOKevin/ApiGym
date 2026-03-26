@@ -1,0 +1,286 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ==========================================
+// ENUMS
+// ==========================================
+enum Role {
+  ADMIN
+  TRAINER
+  USER
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  APP_GATEWAY
+  CASH
+  TRANSFER
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+enum RoutineStatus {
+  PENDING
+  COMPLETED
+  SKIPPED
+}
+
+enum MealType {
+  BREAKFAST
+  MORNING_SNACK
+  LUNCH
+  AFTERNOON_SNACK
+  DINNER
+}
+
+// ==========================================
+// MODELS
+// ==========================================
+
+model User {
+  id              String     @id @default(uuid())
+  email           String     @unique @db.VarChar(100)
+  passwordHash    String     @db.VarChar(255)
+  firstName       String     @db.VarChar(50)
+  lastName        String     @db.VarChar(50)
+  phone           String?    @db.VarChar(20)
+  profileImageUrl String?    @db.VarChar(255) // Añadido para Web/Android UI
+  fcmToken        String?    @db.VarChar(255) // Añadido para Notificaciones Push (Android/iOS)
+  role            Role       @default(USER)
+  status          UserStatus @default(ACTIVE)
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+
+  // Relations
+  trainerClients   TrainerClient[]    @relation("TrainerToClient")
+  clientTrainers   TrainerClient[]    @relation("ClientToTrainer")
+  subscriptions    UserSubscription[]
+  payments         Payment[]          @relation("UserPayments")
+  paymentsReceived Payment[]          @relation("AdminRegisteredPayments") // Pagos registrados por este admin
+
+  // Routine Relations
+  routinesAsTrainer Routine[] @relation("TrainerRoutines")
+  routinesAsClient  Routine[] @relation("ClientRoutines")
+
+  // Measurement & Diet Relations
+  measurements      Measurement[] @relation("UserMeasurements")
+  measurementsBy    Measurement[] @relation("TrainerMeasurements")
+  dietsAsTrainer    Diet[]        @relation("TrainerDiets")
+  dietsAsClient     Diet[]        @relation("ClientDiets")
+
+  @@map("users")
+}
+
+model TrainerClient {
+  id         String   @id @default(uuid())
+  trainerId  String
+  clientId   String
+  assignedAt DateTime @default(now())
+  isActive   Boolean  @default(true)
+
+  // Relations
+  trainer User @relation("TrainerToClient", fields: [trainerId], references: [id])
+  client  User @relation("ClientToTrainer", fields: [clientId], references: [id])
+
+  @@unique([trainerId, clientId])
+  @@map("trainer_clients")
+}
+
+model SubscriptionPlan {
+  id           String   @id @default(uuid())
+  name         String   @db.VarChar(50)
+  description  String   @db.Text
+  durationDays Int
+  price        Decimal  @db.Decimal(10, 2)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  // Relations
+  userSubscriptions UserSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model UserSubscription {
+  id        String             @id @default(uuid())
+  userId    String
+  planId    String
+  startDate DateTime           @db.Date
+  endDate   DateTime           @db.Date
+  status    SubscriptionStatus @default(ACTIVE)
+  createdAt DateTime           @default(now())
+  updatedAt DateTime           @updatedAt
+
+  // Relations
+  user User             @relation(fields: [userId], references: [id])
+  plan SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  @@map("user_subscriptions")
+}
+
+model Payment {
+  id             String        @id @default(uuid())
+  userId         String
+  registeredById String?       // Añadido para auditoría (qué admin recibió el efectivo)
+  amount         Decimal       @db.Decimal(10, 2)
+  currency       String        @default("USD") @db.VarChar(3)
+  paymentMethod  PaymentMethod
+  referenceId    String?       @db.VarChar(100)
+  status         PaymentStatus @default(PENDING)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Relations
+  user         User  @relation("UserPayments", fields: [userId], references: [id])
+  registeredBy User? @relation("AdminRegisteredPayments", fields: [registeredById], references: [id])
+
+  @@map("payments")
+}
+
+// ==========================================
+// CORE DE ENTRENAMIENTO (Sprint 3)
+// ==========================================
+
+model Exercise {
+  id          String   @id @default(uuid())
+  name        String   @db.VarChar(100)
+  muscleGroup String   @db.VarChar(50)
+  videoUrl    String?  @db.VarChar(255)
+  imageUrl    String?  @db.VarChar(255) // Añadido: alternativa si no hay video
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  routineExercises RoutineExercise[]
+
+  @@map("exercises")
+}
+
+model Routine {
+  id         String        @id @default(uuid())
+  trainerId  String
+  clientId   String
+  date       DateTime?     @db.Date // Nullable si es una plantilla
+  dayOfWeek  DayOfWeek?    // Añadido: Permite crear rutinas recurrentes (ej. todos los lunes)
+  isTemplate Boolean       @default(false) // Añadido: Si es true, es base, no historial
+  status     RoutineStatus @default(PENDING)
+  notes      String?       @db.Text
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+
+  // Relations
+  trainer   User              @relation("TrainerRoutines", fields: [trainerId], references: [id])
+  client    User              @relation("ClientRoutines", fields: [clientId], references: [id])
+  exercises RoutineExercise[]
+
+  @@map("routines")
+}
+
+model RoutineExercise {
+  id          String   @id @default(uuid())
+  routineId   String
+  exerciseId  String
+  sets        Int
+  reps        Int
+  weightKg    Decimal  @db.Decimal(5, 2)
+  restSeconds Int
+  orderIndex  Int      // Renombrado de 'order' (palabra reservada en SQL)
+  isCompleted Boolean  @default(false) // Añadido: Tracking real en la APP mientras entrena
+
+  // Relations
+  routine  Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
+  exercise Exercise @relation(fields: [exerciseId], references: [id])
+
+  @@map("routine_exercises")
+}
+
+// ==========================================
+// ANTROPOMETRÍA Y DIETAS (Sprint 4)
+// ==========================================
+
+model Measurement {
+  id            String   @id @default(uuid())
+  userId        String
+  trainerId     String
+  date          DateTime @db.Date
+  weightKg      Decimal  @db.Decimal(5, 2)
+  bodyFatPct    Decimal? @db.Decimal(5, 2)
+  muscleMassKg  Decimal? @db.Decimal(5, 2)
+  chestCm       Decimal? @db.Decimal(5, 2)
+  armsCm        Decimal? @db.Decimal(5, 2)
+  waistCm       Decimal? @db.Decimal(5, 2)
+  legsCm        Decimal? @db.Decimal(5, 2)
+  createdAt     DateTime @default(now())
+
+  // Relations
+  user    User @relation("UserMeasurements", fields: [userId], references: [id])
+  trainer User @relation("TrainerMeasurements", fields: [trainerId], references: [id])
+
+  @@map("measurements")
+}
+
+model Diet {
+  id         String   @id @default(uuid())
+  trainerId  String
+  clientId   String
+  startDate  DateTime @db.Date
+  endDate    DateTime @db.Date
+  notes      String?  @db.Text
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // Relations
+  trainer User       @relation("TrainerDiets", fields: [trainerId], references: [id])
+  client  User       @relation("ClientDiets", fields: [clientId], references: [id])
+  meals   DietMeal[]
+
+  @@map("diets")
+}
+
+model DietMeal {
+  id          String   @id @default(uuid())
+  dietId      String
+  mealType    MealType
+  description String   @db.Text
+  calories    Int?
+
+  // Relations
+  diet Diet @relation(fields: [dietId], references: [id], onDelete: Cascade)
+
+  @@map("diet_meals")
+}
