@@ -19,8 +19,9 @@ export class ExercisesService {
     });
   }
 
-  async findAll() {
-    return this.exerciseRepository.findAll();
+  async findAll(page: number = 1, limit: number = 10, muscleGroup?: string, search?: string) {
+    const skip = (page - 1) * limit;
+    return this.exerciseRepository.findAll(skip, limit, muscleGroup, search);
   }
 
   async findOne(id: string) {

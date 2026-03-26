@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '../../../../common/prisma/prisma.service';
 import { IUserRepository } from '../../domain/interfaces/user.repository.interface';
 import { User } from '../../domain/entities/user.entity';
+import { Prisma, Role, UserStatus } from '@prisma/client';
 
 @Injectable()
 export class PrismaUserRepository implements IUserRepository {
@@ -17,6 +18,31 @@ export class PrismaUserRepository implements IUserRepository {
     const user = await this.prisma.user.findUnique({ where: { email } });
     if (!user) return null;
     return this.mapToDomain(user);
+  }
+
+  async findAll(skip?: number, take?: number, role?: Role, status?: UserStatus, search?: string): Promise<{ data: User[], total: number }> {
+    const where: Prisma.UserWhereInput = {};
+    if (role) where.role = role;
+    if (status) where.status = status;
+    if (search) {
+      where.OR = [
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.user.findMany({
+        where,
+        skip,
+        take,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.user.count({ where }),
+    ]);
+
+    return { data: data.map(this.mapToDomain), total };
   }
 
   async create(data: Omit<User, 'id' | 'createdAt' | 'updatedAt'>): Promise<User> {

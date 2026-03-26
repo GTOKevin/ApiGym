@@ -96,11 +96,13 @@ model User {
   routinesAsClient  Routine[] @relation("ClientRoutines")
 
   // Measurement & Diet Relations
-  measurements      Measurement[] @relation("UserMeasurements")
-  measurementsBy    Measurement[] @relation("TrainerMeasurements")
-  dietsAsTrainer    Diet[]        @relation("TrainerDiets")
-  dietsAsClient     Diet[]        @relation("ClientDiets")
+  measurements   Measurement[] @relation("UserMeasurements")
+  measurementsBy Measurement[] @relation("TrainerMeasurements")
+  dietsAsTrainer Diet[]        @relation("TrainerDiets")
+  dietsAsClient  Diet[]        @relation("ClientDiets")
 
+  @@index([role])
+  @@index([status])
   @@map("users")
 }
 
@@ -155,7 +157,7 @@ model UserSubscription {
 model Payment {
   id             String        @id @default(uuid())
   userId         String
-  registeredById String?       // Añadido para auditoría (qué admin recibió el efectivo)
+  registeredById String? // Añadido para auditoría (qué admin recibió el efectivo)
   amount         Decimal       @db.Decimal(10, 2)
   currency       String        @default("USD") @db.VarChar(3)
   paymentMethod  PaymentMethod
@@ -168,6 +170,10 @@ model Payment {
   user         User  @relation("UserPayments", fields: [userId], references: [id])
   registeredBy User? @relation("AdminRegisteredPayments", fields: [registeredById], references: [id])
 
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([paymentMethod])
   @@map("payments")
 }
 
@@ -187,6 +193,8 @@ model Exercise {
   // Relations
   routineExercises RoutineExercise[]
 
+  @@index([name])
+  @@index([muscleGroup])
   @@map("exercises")
 }
 
@@ -195,7 +203,7 @@ model Routine {
   trainerId  String
   clientId   String
   date       DateTime?     @db.Date // Nullable si es una plantilla
-  dayOfWeek  DayOfWeek?    // Añadido: Permite crear rutinas recurrentes (ej. todos los lunes)
+  dayOfWeek  DayOfWeek? // Añadido: Permite crear rutinas recurrentes (ej. todos los lunes)
   isTemplate Boolean       @default(false) // Añadido: Si es true, es base, no historial
   status     RoutineStatus @default(PENDING)
   notes      String?       @db.Text
@@ -211,15 +219,15 @@ model Routine {
 }
 
 model RoutineExercise {
-  id          String   @id @default(uuid())
+  id          String  @id @default(uuid())
   routineId   String
   exerciseId  String
   sets        Int
   reps        Int
-  weightKg    Decimal  @db.Decimal(5, 2)
+  weightKg    Decimal @db.Decimal(5, 2)
   restSeconds Int
-  orderIndex  Int      // Renombrado de 'order' (palabra reservada en SQL)
-  isCompleted Boolean  @default(false) // Añadido: Tracking real en la APP mientras entrena
+  orderIndex  Int // Renombrado de 'order' (palabra reservada en SQL)
+  isCompleted Boolean @default(false) // Añadido: Tracking real en la APP mientras entrena
 
   // Relations
   routine  Routine  @relation(fields: [routineId], references: [id], onDelete: Cascade)
@@ -233,18 +241,18 @@ model RoutineExercise {
 // ==========================================
 
 model Measurement {
-  id            String   @id @default(uuid())
-  userId        String
-  trainerId     String
-  date          DateTime @db.Date
-  weightKg      Decimal  @db.Decimal(5, 2)
-  bodyFatPct    Decimal? @db.Decimal(5, 2)
-  muscleMassKg  Decimal? @db.Decimal(5, 2)
-  chestCm       Decimal? @db.Decimal(5, 2)
-  armsCm        Decimal? @db.Decimal(5, 2)
-  waistCm       Decimal? @db.Decimal(5, 2)
-  legsCm        Decimal? @db.Decimal(5, 2)
-  createdAt     DateTime @default(now())
+  id           String   @id @default(uuid())
+  userId       String
+  trainerId    String
+  date         DateTime @db.Date
+  weightKg     Decimal  @db.Decimal(5, 2)
+  bodyFatPct   Decimal? @db.Decimal(5, 2)
+  muscleMassKg Decimal? @db.Decimal(5, 2)
+  chestCm      Decimal? @db.Decimal(5, 2)
+  armsCm       Decimal? @db.Decimal(5, 2)
+  waistCm      Decimal? @db.Decimal(5, 2)
+  legsCm       Decimal? @db.Decimal(5, 2)
+  createdAt    DateTime @default(now())
 
   // Relations
   user    User @relation("UserMeasurements", fields: [userId], references: [id])
@@ -254,15 +262,15 @@ model Measurement {
 }
 
 model Diet {
-  id         String   @id @default(uuid())
-  trainerId  String
-  clientId   String
-  startDate  DateTime @db.Date
-  endDate    DateTime @db.Date
-  notes      String?  @db.Text
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(uuid())
+  trainerId String
+  clientId  String
+  startDate DateTime @db.Date
+  endDate   DateTime @db.Date
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
   trainer User       @relation("TrainerDiets", fields: [trainerId], references: [id])

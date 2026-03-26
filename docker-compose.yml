@@ -33,6 +33,9 @@ services:
       - DATABASE_URL=postgresql://postgres:sql@postgres:5432/DbGym?schema=public
       - JWT_SECRET=mi_secreto_super_seguro_gym_2024
       - JWT_EXPIRATION=1d
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:8080
+      - MERCADOPAGO_WEBHOOK_SECRET=your_mercadopago_secret_here
+      - CULQI_WEBHOOK_SECRET=your_culqi_secret_here
     depends_on:
       postgres:
         condition: service_healthy

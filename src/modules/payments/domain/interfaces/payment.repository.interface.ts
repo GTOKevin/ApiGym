@@ -12,5 +12,6 @@ export interface IPaymentRepository {
     status: PaymentStatus;
   }): Promise<Payment>;
   
-  findByUserId(userId: string): Promise<Payment[]>;
+  findByUserId(userId: string, skip?: number, take?: number, status?: PaymentStatus): Promise<{ data: Payment[], total: number }>;
+  findAll(skip?: number, take?: number, status?: PaymentStatus, paymentMethod?: PaymentMethod): Promise<{ data: Payment[], total: number }>;
 }
